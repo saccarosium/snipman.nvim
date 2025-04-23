@@ -66,27 +66,23 @@ end
 --- @param prefix string
 --- @return string?
 local function get_snippet(filetype, prefix)
-    local snippets = {
-        all = {},
-        [filetype] = {},
-    }
-
     for _, name in ipairs({ "all", filetype }) do
         local path = vim.fs.joinpath(Config.directory, name .. ".json")
         if vim.uv.fs_stat(path) then
             local content = file_read(path)
-            snippets[name] = vim.json.decode(content)
-        end
-    end
+            local ok, snippets = pcall(vim.json.decode, content)
+            if not ok then
+                vim.notify(
+                    "Snipman: Failed to parse snippet file for " .. name,
+                    vim.log.levels.ERROR
+                )
+                return
+            end
 
-    if vim.tbl_isempty(snippets) then
-        return
-    end
-
-    for _, name in ipairs({ "all", filetype }) do
-        for _, v in ipairs(snippets[name]) do
-            if v.prefix == prefix then
-                return table.concat(v.body, "\n")
+            for _, snippet in pairs(snippets) do
+                if snippet.prefix == prefix then
+                    return table.concat(snippet.body, "\n")
+                end
             end
         end
     end
